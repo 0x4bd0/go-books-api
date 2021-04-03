@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 )
@@ -46,7 +47,6 @@ func (b *bookHandler) post(writer http.ResponseWriter, request *http.Request){
 		writer.Write([]byte(fmt.Sprintf("need content-type 'application/json', but got '%s'", ct)))
 		return
 	}
-
 
 	BodyBytes, err := ioutil.ReadAll(request.Body)
 	defer request.Body.Close()
@@ -110,6 +110,44 @@ func (b *bookHandler) get(writer http.ResponseWriter, request *http.Request){
 	writer.Write(jsonBytes)
 }
 
+
+func (b *bookHandler) getBook(writer http.ResponseWriter, request *http.Request){
+
+urlParts := strings.Split(request.RequestURI, "/")
+
+if ( len(urlParts) != 3){
+	writer.WriteHeader(http.StatusNotFound)
+	return
+}
+
+
+b.Lock()
+book, ok := b.store[urlParts[2]]
+defer b.Unlock()
+
+if(!ok){
+
+	writer.WriteHeader(http.StatusNotFound)
+	writer.Write([]byte("Book not found"))
+	return
+	
+} else {
+
+	jsonBytes, err := json.Marshal(book)
+
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+	    writer.Write([]byte (err.Error()))
+		return
+	}
+
+	writer.Header().Add("content-type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	writer.Write(jsonBytes)
+}
+
+}
+
 func newBookHandler() *bookHandler {
 	return &bookHandler{
 		store : map[string]Book{
@@ -128,6 +166,7 @@ func main () {
 	bookHandler := newBookHandler()
 
 	http.HandleFunc("/books",bookHandler.books)
+	http.HandleFunc("/books/",bookHandler.getBook)
 
 	err := http.ListenAndServe(":1234",nil)
 
