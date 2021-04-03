@@ -2,8 +2,11 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"net/http"
 	"sync"
+	"time"
 )
 
 type Book struct {
@@ -26,7 +29,7 @@ func (b *bookHandler) books(writer http.ResponseWriter, request *http.Request){
 			b.get(writer, request)
 			return
 	case "POST" :
-			b.get(writer, request)
+			b.post(writer, request)
 			return
 	default :
 	        writer.WriteHeader(http.StatusMethodNotAllowed)
@@ -37,6 +40,38 @@ func (b *bookHandler) books(writer http.ResponseWriter, request *http.Request){
 
 func (b *bookHandler) post(writer http.ResponseWriter, request *http.Request){
 
+	BodyBytes, err := ioutil.ReadAll(request.Body)
+	defer request.Body.Close()
+
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+	    writer.Write([]byte (err.Error()))
+	}
+
+	var book Book
+    err = json.Unmarshal(BodyBytes,  &book);
+
+	if err != nil {
+		writer.WriteHeader(http.StatusBadRequest)
+	    writer.Write([]byte (err.Error()))
+	}
+
+	book.Id = fmt.Sprintf("%d", time.Now().UnixNano())
+	b.Lock()
+	b.store[book.Id] = book
+	defer b.Unlock()
+
+
+	jsonBytes, err  := json.Marshal(book)
+	
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+	    writer.Write([]byte (err.Error()))
+	}
+
+	writer.Header().Add("content-type", "application/json")
+	writer.WriteHeader(http.StatusOK)
+	writer.Write(jsonBytes)
 }
 
 func (b *bookHandler) get(writer http.ResponseWriter, request *http.Request){
