@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 )
 
@@ -32,7 +31,8 @@ func (b *bookHandler) get(writer http.ResponseWriter, request *http.Request){
 	jsonBytes, err  := json.Marshal(books)
 	
 	if err != nil {
-		fmt.Println("something went wrong")
+		writer.WriteHeader(http.StatusInternalServerError)
+	     writer.Write([]byte (err.Error()))
 	}
 
 	writer.Header().Add("content-type", "application/json")
