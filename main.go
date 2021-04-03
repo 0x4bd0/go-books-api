@@ -39,6 +39,21 @@ func (b *bookHandler) books(writer http.ResponseWriter, request *http.Request){
 	}
 }
 
+func (b *bookHandler) book(writer http.ResponseWriter, request *http.Request){
+	switch request.Method {
+	case "GET" :
+			b.getBook(writer, request)
+			return
+	case "PUT" :
+			b.editBook(writer, request)
+			return
+	default :
+	        writer.WriteHeader(http.StatusMethodNotAllowed)
+			writer.Write([]byte("Action not alowed"))
+			return
+	}
+}
+
 func (b *bookHandler) post(writer http.ResponseWriter, request *http.Request){
 
 	ct := request.Header.Get("content-type")
@@ -83,6 +98,7 @@ func (b *bookHandler) post(writer http.ResponseWriter, request *http.Request){
 	writer.Header().Add("content-type", "application/json")
 	writer.WriteHeader(http.StatusOK)
 	writer.Write(jsonBytes)
+	return
 }
 
 func (b *bookHandler) get(writer http.ResponseWriter, request *http.Request){
@@ -108,8 +124,70 @@ func (b *bookHandler) get(writer http.ResponseWriter, request *http.Request){
 	writer.Header().Add("content-type", "application/json")
 	writer.WriteHeader(http.StatusOK)
 	writer.Write(jsonBytes)
+	return
 }
 
+func (b *bookHandler) editBook(writer http.ResponseWriter, request *http.Request){
+
+	urlParts := strings.Split(request.RequestURI, "/")
+	
+	if ( len(urlParts) != 3){
+		writer.WriteHeader(http.StatusNotFound)
+		return
+	}
+	
+	ct := request.Header.Get("content-type")
+	if ct != "application/json" {
+		writer.WriteHeader(http.StatusUnsupportedMediaType)
+		writer.Write([]byte(fmt.Sprintf("need content-type 'application/json', but got '%s'", ct)))
+		return
+	}
+
+	BodyBytes, err := ioutil.ReadAll(request.Body)
+	defer request.Body.Close()
+
+	if err != nil {
+		writer.WriteHeader(http.StatusInternalServerError)
+	    writer.Write([]byte (err.Error()))
+		return
+	}
+
+	var updatedBook Book
+    err = json.Unmarshal(BodyBytes,  &updatedBook);
+
+	if err != nil {
+		writer.WriteHeader(http.StatusBadRequest)
+	    writer.Write([]byte (err.Error()))
+		return
+	}
+	
+
+		b.Lock()
+		_, ok := b.store[urlParts[2]]
+
+		if(!ok){
+			writer.WriteHeader(http.StatusNotFound)
+			writer.Write([]byte("Book not found"))
+			return
+		} 
+
+	b.store[urlParts[2]] = updatedBook
+	defer b.Unlock()
+	
+		jsonBytes, err := json.Marshal(updatedBook)
+	
+		if err != nil {
+			writer.WriteHeader(http.StatusInternalServerError)
+			writer.Write([]byte (err.Error()))
+			return
+		}
+	
+		writer.Header().Add("content-type", "application/json")
+		writer.WriteHeader(http.StatusOK)
+		writer.Write(jsonBytes)
+		return
+	
+	}
 
 func (b *bookHandler) getBook(writer http.ResponseWriter, request *http.Request){
 
@@ -130,7 +208,7 @@ if(!ok){
 	writer.WriteHeader(http.StatusNotFound)
 	writer.Write([]byte("Book not found"))
 	return
-	
+
 } else {
 
 	jsonBytes, err := json.Marshal(book)
@@ -144,6 +222,7 @@ if(!ok){
 	writer.Header().Add("content-type", "application/json")
 	writer.WriteHeader(http.StatusOK)
 	writer.Write(jsonBytes)
+	return
 }
 
 }
@@ -166,7 +245,7 @@ func main () {
 	bookHandler := newBookHandler()
 
 	http.HandleFunc("/books",bookHandler.books)
-	http.HandleFunc("/books/",bookHandler.getBook)
+	http.HandleFunc("/books/",bookHandler.book)
 
 	err := http.ListenAndServe(":1234",nil)
 
