@@ -46,6 +46,7 @@ func (b *bookHandler) post(writer http.ResponseWriter, request *http.Request){
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)
 	    writer.Write([]byte (err.Error()))
+		return
 	}
 
 	var book Book
@@ -54,6 +55,7 @@ func (b *bookHandler) post(writer http.ResponseWriter, request *http.Request){
 	if err != nil {
 		writer.WriteHeader(http.StatusBadRequest)
 	    writer.Write([]byte (err.Error()))
+		return
 	}
 
 	book.Id = fmt.Sprintf("%d", time.Now().UnixNano())
@@ -67,6 +69,7 @@ func (b *bookHandler) post(writer http.ResponseWriter, request *http.Request){
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)
 	    writer.Write([]byte (err.Error()))
+		return
 	}
 
 	writer.Header().Add("content-type", "application/json")
@@ -91,6 +94,7 @@ func (b *bookHandler) get(writer http.ResponseWriter, request *http.Request){
 	if err != nil {
 		writer.WriteHeader(http.StatusInternalServerError)
 	    writer.Write([]byte (err.Error()))
+		return
 	}
 
 	writer.Header().Add("content-type", "application/json")
