@@ -47,6 +47,9 @@ func (b *bookHandler) book(writer http.ResponseWriter, request *http.Request){
 	case "PUT" :
 			b.editBook(writer, request)
 			return
+		case "DELETE" :
+			b.deleteBook(writer, request)
+			return
 	default :
 	        writer.WriteHeader(http.StatusMethodNotAllowed)
 			writer.Write([]byte("Action not alowed"))
@@ -126,6 +129,36 @@ func (b *bookHandler) get(writer http.ResponseWriter, request *http.Request){
 	writer.Write(jsonBytes)
 	return
 }
+
+
+func (b *bookHandler) deleteBook(writer http.ResponseWriter, request *http.Request){
+
+	urlParts := strings.Split(request.RequestURI, "/")
+	
+	if ( len(urlParts) != 3){
+		writer.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+		b.Lock()
+		_, ok := b.store[urlParts[2]]
+
+		if(!ok){
+			writer.WriteHeader(http.StatusNotFound)
+			writer.Write([]byte("Book not found"))
+			return
+		} 
+
+	delete(b.store, urlParts[2])
+	defer b.Unlock()
+	
+		writer.Header().Add("content-type", "application/json")
+		writer.WriteHeader(http.StatusOK)
+		writer.Write([]byte("Book deleted successfully"))
+		return
+	
+	}
+
 
 func (b *bookHandler) editBook(writer http.ResponseWriter, request *http.Request){
 
