@@ -40,6 +40,14 @@ func (b *bookHandler) books(writer http.ResponseWriter, request *http.Request){
 
 func (b *bookHandler) post(writer http.ResponseWriter, request *http.Request){
 
+	ct := request.Header.Get("content-type")
+	if ct != "application/json" {
+		writer.WriteHeader(http.StatusUnsupportedMediaType)
+		writer.Write([]byte(fmt.Sprintf("need content-type 'application/json', but got '%s'", ct)))
+		return
+	}
+
+
 	BodyBytes, err := ioutil.ReadAll(request.Body)
 	defer request.Body.Close()
 
